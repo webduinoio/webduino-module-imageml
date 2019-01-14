@@ -1,0 +1,20 @@
+{
+  "name": "webduino-module-imageml",
+  "version": "1.0.0",
+  "description": "Imageml Module for Webduino",
+  "main": "imageml.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "keywords": [
+    "arduino",
+    "webduino",
+    "imageml"
+  ],
+  "dependencies": {
+    "webduino-js": "0.x"
+  }
+}
+

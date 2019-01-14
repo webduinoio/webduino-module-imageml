@@ -1,0 +1,19 @@
+{
+  "name": "webduino-module-imageml",
+  "description": "ImageML Module for Webduino",
+  "main": "imageml.js",
+  "authors": "",
+  "license": "MIT",
+  "keywords": [
+    "arduino",
+    "webduino",
+    "imageml"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
