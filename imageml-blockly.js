@@ -2,8 +2,8 @@
 
   'use strict';
 
-  window.getVideoClassifier = function (modelName, camSource, userId, rotate) {
-    return new webduino.module.imageml(modelName, camSource, userId, rotate);
+  window.getVideoClassifier = function (modelName, camSource, userId, rotate, _canvas) {
+    return new webduino.module.imageml(modelName, camSource, userId, rotate, _canvas);
   };
 
 }(window, window.webduino));

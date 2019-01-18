@@ -241,7 +241,7 @@ let Camera = (function () {
     headElement.appendChild(newScriptElement);
   }
 
-  async function start(modelName, camSource, userId, _rotate) {
+  async function start(modelName, camSource, userId, _rotate, _eleCanvas) {
     console.log("tfjs 0.13.4");
     var rotate = _rotate;
     //camSource = "http://192.168.0.168/jpg?0.5";
@@ -263,10 +263,15 @@ let Camera = (function () {
       alert('Load model error!');
     }
     if (camSource != '本機') {
-      var c1 = document.createElement('canvas');
+      var c1;
+      if (typeof _eleCanvas != 'undefined') {
+        c1 = _eleCanvas;
+      } else {
+        c1 = document.createElement('canvas');
+        document.body.appendChild(c1);
+      }
       c1.width = 224;
       c1.height = 224;
-      document.body.appendChild(c1);
       var cam = new Camera(camSource);
       cam.setRotateCam(rotate ? 90 : 0);
       cam.onCanvas(c1, function (c) {
@@ -303,9 +308,9 @@ let Camera = (function () {
     await proto.startDetect();
   }
 
-  function imageml(modelName, camSource, userId, _rotate) {
+  function imageml(modelName, camSource, userId, _rotate, _canvas) {
     setTimeout(async () => {
-      await start(modelName, camSource, userId, _rotate);
+      await start(modelName, camSource, userId, _rotate, _canvas);
     }, 1);
   }
 
