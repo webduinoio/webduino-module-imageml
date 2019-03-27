@@ -2,20 +2,18 @@ let Camera = (function () {
   const webCam = 0;
   const wsCam = 1;
   const jpgCam = 2;
+  const imgStreamCam = 3;
 
   class Camera {
-    // camType: 0,1,2 or http://192.168.0.11/jpg or ws://192.168.43.110:8889/rws/ws
+    // webCam: 0,1,2
+    // jpgCam: http://192.168.0.11/jpg
+    // wsCam:  ws://192.168.43.110:8889/rws/ws
     constructor(camType) {
+      if (arguments.length == 0) {
+        camType = 0;
+      }
       this.setCamType(camType);
-      this.setRotateCam(0)
-    }
-
-    setRotateCam(degree) {
-      this.rotateCam = degree;
-    }
-
-    getRotateCam() {
-      return this.rotateCam;
+      this.setFlip(false);
     }
 
     setCamType(camType) {
@@ -25,19 +23,43 @@ let Camera = (function () {
         if (camType.indexOf("ws://") == 0) {
           this.camType = wsCam;
         } else if (camType.indexOf("http://") == 0) {
-          this.camType = jpgCam;
+          if (camType.indexOf(":81/stream") > 0) {
+            this.camType = imgStreamCam;
+          } else {
+            this.camType = jpgCam;
+          }
+          this.rotate = false;
         }
       } else {
-        this.camType = parseInt(camType);
+        this.camType = webCam;
+        this.webCamSelect = camType;
       }
     }
 
-    enumerateDevices() {
+    setRotate(bool) {
+      this.rotate = bool;
+      return this;
+    }
+
+    setFlip(bool) {
+      this.flip = bool;
+      return this;
+    }
+
+    list(callback) {
+      var self = this;
+      this.enumerateDevices(function () {
+        callback(self.cameraList);
+      });
+    }
+
+    enumerateDevices(cb) {
       var self = this;
       return new Promise(function (resolve, reject) {
         navigator.mediaDevices.enumerateDevices()
           .then(function (o) {
             self.gotDevices(self, o);
+            if (cb) cb();
             resolve();
           }).catch(self.handleError);
       });
@@ -63,7 +85,7 @@ let Camera = (function () {
           }
           var deviceId = 0;
           try {
-            deviceId = this.cameraList[this.camType].deviceId;
+            deviceId = this.cameraList[this.webCamSelect].deviceId;
           } catch (e) {
             console.log("can't found camType:", this.camType, "error:", e);
             console.log(this.cameraList);
@@ -90,8 +112,13 @@ let Camera = (function () {
           break;
         case jpgCam:
           // http://192.168.43.201:9966/ok.png
-          console.log("JPGCam:", this.camType, " ,URL:", this.URL);
-          //this.setRotateCam(90);
+          console.log("JPGCam:", this.camType);
+          console.log("URL:", this.URL);
+          break;
+        case imgStreamCam:
+          // http://192.168.43.201:9966/ok.png
+          console.log("imgStreamCam:", this.camType);
+          console.log("URL:", this.URL);
           break;
       }
     }
@@ -110,6 +137,8 @@ let Camera = (function () {
       if (param > 0) {
         camSnapshotDelay = parseFloat(this.URL.substring(param + 1)) * 1000;
         this.URL = this.URL.substring(0, param);
+      } else {
+        camSnapshotDelay = camSnapshotDelay * 1000;
       }
       image.src = this.URL;
       image.onload = function () {
@@ -125,7 +154,7 @@ let Camera = (function () {
     onCanvas(eleOrId, callback) {
       var self = this;
       var canvas = self.getEle(eleOrId);
-      buttonTrigger(canvas, function () {
+      this.buttonTrigger(canvas, function () {
         self.startCam();
         switch (self.camType) {
           case webCam:
@@ -138,7 +167,7 @@ let Camera = (function () {
                 ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight,
                   0, 0, canvas.width, canvas.height);
                 if (typeof callback == 'function') {
-                  callback(canvas);
+                  callback(canvas, video);
                 }
                 requestAnimationFrame(loop);
               }
@@ -146,25 +175,46 @@ let Camera = (function () {
             }
             break;
           case jpgCam:
-            self.onImage(document.createElement('img'), function (img) {
+            var ele = document.createElement('img');
+            //ele.width = canvas.width;
+            //ele.height = canvas.height;
+            self.onImage(ele, function (img) {
               var ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
-              if (self.getRotateCam() > 0) {
-                self.drawRotated(canvas, img, 90);
-              }
+              //ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
+              self.drawRotated(canvas, img, self.rotate);
               if (typeof callback == 'function') {
-                callback(canvas);
+                callback(canvas,ele);
               }
             });
             break;
+          case imgStreamCam:
+            var ele = document.createElement('img');
+            ele.src = self.URL;
+            ele.setAttribute("crossOrigin", 'Anonymous');
+            ele.style.display = 'none';
+            document.getElementsByTagName("body")[0].append(ele);
+            var ctx = canvas.getContext('2d');
+            var loop = function () {
+              // ctx.drawImage(ele, 0, 0, ele.width, ele.height,0, 0, canvas.width, canvas.height);
+              try {
+                self.drawRotated(canvas, ele, self.rotate);
+                if (typeof callback == 'function') {
+                  callback(canvas,ele);
+                }
+              } catch (e) { console.log("img err:", e) };
+              requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+            break;
         }
       });
+      return this;
     }
 
     toVideo(eleOrId) {
       var self = this;
       window.remoteVideo = self.video = this.getEle(eleOrId);
-      buttonTrigger(self.video, function () {
+      this.buttonTrigger(self.video, function () {
         self.startCam();
       });
     }
@@ -176,39 +226,50 @@ let Camera = (function () {
     }
 
     drawRotated(canvas, image, degrees) {
+      degrees = this.rotate ? 90 : 0;
       var context = canvas.getContext('2d');
       context.clearRect(0, 0, canvas.width, canvas.height);
       context.save();
       context.translate(canvas.width / 2, canvas.height / 2);
       context.rotate(degrees * Math.PI / 180);
-      context.drawImage(image, -image.width / 2, -image.width / 2);
+      var w = (canvas.width - image.width) / 2;
+      var h = (canvas.height - image.height) / 2;
+      if (degrees != 0) {
+        context.drawImage(image,
+          (-image.height / 2) - h, (-image.width / 2) - w,
+          canvas.height, canvas.width);
+      } else {
+        context.drawImage(image,
+          (-image.width / 2) - w, (-image.height / 2) - h,
+          canvas.width, canvas.height);
+      }
       context.restore();
     }
-  }
 
-  function buttonTrigger(ele, callback) {
-    if (navigator.userAgent.indexOf("Chrome") < 0) {
-      var btn = document.createElement("BUTTON");
-      btn.setAttribute("style", "background-color: #e0f0e0;position: absolute;z-index:2;font-size:32px");
-      document.getElementsByTagName("body")[0].append(btn);
-      var rect = ele.getBoundingClientRect();
-      btn.style.top = rect.top;
-      btn.style.left = rect.left;
-      btn.style.width = rect.width;
-      btn.style.height = rect.height;
-      btn.innerHTML = "Start Camera";
-      btn.addEventListener('click', function (e) {
-        btn.parentNode.removeChild(btn);
+    buttonTrigger(ele, callback) {
+      if (this.camType != 0 && this.camType != jpgCam && this.camType != imgStreamCam) {
+        var btn = document.createElement("BUTTON");
+        btn.setAttribute("style", "background-color: #e0f0e0;position: fixed;z-index:2;top:5px;left:5px;font-size:96px");
+        document.getElementsByTagName("body")[0].append(btn);
+        var rect = ele.getBoundingClientRect();
+        btn.style.top = rect.top;
+        btn.style.left = rect.left;
+        btn.style.width = rect.width;
+        btn.style.height = rect.height;
+        btn.innerHTML = "Start Camera";
+        btn.addEventListener('click', function (e) {
+          btn.parentNode.removeChild(btn);
+          callback();
+        });
+      } else {
         callback();
-      });
-    } else {
-      callback();
+      }
     }
   }
 
   return Camera;
 })();
-
+console.log(">>>>>>");
 +
 (function (factory) {
   if (typeof exports === 'undefined') {
@@ -273,7 +334,7 @@ let Camera = (function () {
       c1.width = 224;
       c1.height = 224;
       var cam = new Camera(camSource);
-      cam.setRotateCam(rotate ? 90 : 0);
+      cam.setRotate(rotate ? 90 : 0);
       cam.onCanvas(c1, function (c) {
         vid = c.getContext('2d').getImageData(0, 0, 224, 224);
       });
