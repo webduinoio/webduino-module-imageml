@@ -241,6 +241,15 @@ let Camera = (function () {
     headElement.appendChild(newScriptElement);
   }
 
+  async function getMobileNet() {
+    try {
+      return await tf.loadModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
+    } catch (e) {
+      console.warn(`Load ${HOST_URL} MobileNet...`);
+      return await tf.loadModel(HOST_URL + '/mobilenet/v1_0.25_224/model.json');
+    }
+  }
+  
   async function start(modelName, camSource, userId, _rotate) {
     console.log("tfjs 0.13.4");
     var rotate = _rotate;
@@ -249,7 +258,7 @@ let Camera = (function () {
     loadJS('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.13.4');
     // load models
     try {
-      const _mobilenet = await tf.loadModel(HOST_URL + '/mobilenet/v1_0.25_224/model.json');
+      const _mobilenet = await getMobileNet()
       const layer = _mobilenet.getLayer('conv_pw_13_relu');
       mobilenet = tf.model({ inputs: _mobilenet.inputs, outputs: layer.output });
       if (modelName.indexOf('https://') === 0) {
