@@ -1,0 +1,38 @@
+name: deploy-to-s3
+
+on:
+  push:
+    branches:
+      - gh-pages
+  workflow_dispatch:
+
+# These permissions are needed to interact with GitHub's OIDC Token endpoint.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      MODULE_NAME: webduino-module-imageml
+      MODULE_ID: 2ea01dee-6de5-4ecc-90e3-5c479b865fa2
+      AWS_REGION: ap-northeast-2
+      AWS_ROLE: arn:aws:iam::610316731343:role/github-action-role
+      AWS_S3_BUCKET: webduino-blockly-module
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE }}
+          role-session-name: ${{ env.AWS_S3_BUCKET }}
+
+      - uses: actions/checkout@v2
+
+      - name: Upload to S3 Bucket
+        run: |
+          aws s3 sync . s3://${AWS_S3_BUCKET}/modules/${MODULE_ID}/${MODULE_NAME}
+        
