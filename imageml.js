@@ -325,7 +325,10 @@ console.log(">>>>>>");
       if (modelName.indexOf('https://') === 0) {
         // modelName is full url
         secondmodel = await tf.loadModel(modelName);
-      } else {
+      } else if (/\/\d{8}.+/.test(modelName)) {
+        secondmodel = await tf.loadModel(`${HOST_URL}/ml_models${modelName}/model.json`);
+      } 
+      else {
         // modelName is just name, combine full url by userId
         secondmodel = await tf.loadModel(HOST_URL + '/ml_models/' + ('00000000' + userId).slice(-8) + modelName + '/model.json');
       }
